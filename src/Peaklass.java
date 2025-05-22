@@ -1,7 +1,6 @@
 import javax.swing.*;
 import java.awt.*;
 
-// Peamine klass mänguakna seadistamiseks ja töölepanekuks
 public class Peaklass extends JFrame {
     public Peaklass() {
         this.add(new Mangupaneel());
@@ -11,7 +10,6 @@ public class Peaklass extends JFrame {
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setLocationRelativeTo(null);
         this.setVisible(true);
-
     }
 
     public static void main(String[] args) {
