@@ -1,26 +1,28 @@
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
+import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Mangupaneel extends JPanel implements ActionListener, KeyListener {
     private final int LAIUS = 800, KORGUS = 300;
-    private Timer taimer; //Mäng lõpetab töötamise kui eemaldada
+    private Timer taimer;
     private Mangija mangija;
-    //Takistuse elemendid
     private final List<Takistus> takistused;
     private long viimaneTakistuseAeg = 0;
     private int takistuseIntervalMax = 2000;
-    private int takistuseInterval = getRandomNumber(500,takistuseIntervalMax); //Suvaline number. Muudab takistuste loomise ajavahemikku
-    //Mängitud aja elemendid
+    private int takistuseInterval = getRandomNumber(500, takistuseIntervalMax);
+
     private final JLabel aegSilt;
     private final long aegStart;
-    private String aegLõpp;
+    private String aegLopp;
     private final Timer aeg;
+
+    private final List<Pilv> pilved = new ArrayList<>();
+    private long viimanePilveAeg = 0;
+
+    private boolean plahvatusAktiveeritud = false;
+    private int plahvatusX = 0, plahvatusY = 0;
 
     public Mangupaneel() {
         this.setPreferredSize(new Dimension(LAIUS, KORGUS));
@@ -33,24 +35,22 @@ public class Mangupaneel extends JPanel implements ActionListener, KeyListener {
         taimer = new Timer(10, this);
         taimer.start();
 
-        //Mängitud aeg
         aegStart = System.nanoTime();
-        aegLõpp = "";
-        aegSilt = new JLabel(aegLõpp);
-
+        aegLopp = "";
+        aegSilt = new JLabel(aegLopp);
         aegSilt.setFont(new Font("DialogInput", Font.BOLD, 24));
         aegSilt.setForeground(Color.WHITE);
         add(aegSilt);
 
-        aeg = new Timer(16, e -> uuendaAeg());  // Uuendab aega iga 16ns
+        aeg = new Timer(16, e -> uuendaAeg());
         aeg.start();
     }
 
     private void uuendaAeg() {
         long läbitudAeg = System.nanoTime() - aegStart;
         double sekundid = läbitudAeg / 1_000_000_000.0;
-        aegLõpp = String.format("%.3f s", sekundid);
-        aegSilt.setText(aegLõpp);
+        aegLopp = String.format("%.3f s", sekundid);
+        aegSilt.setText(aegLopp);
     }
 
     @Override
@@ -59,59 +59,85 @@ public class Mangupaneel extends JPanel implements ActionListener, KeyListener {
         repaint();
     }
 
-    private void uuendaMangu() { //uuendab mängu seisundit
+    private void uuendaMangu() {
+        if (plahvatusAktiveeritud) return; // Peata uuendused kui plahvatus toimub
         mangija.uuenda();
-        haldaTakistusi(); //loob ja uuendab takistuste positsioone
-        kontrolliKokkuporgeid(); 
+        haldaTakistusi();
+        haldaPilvi();
+        kontrolliKokkuporgeid();
     }
 
-    public int getRandomNumber(int min, int max) {  //Annab tagasi suvalise numbri min ja max-1 vahemikus
+    public int getRandomNumber(int min, int max) {
         return (int) ((Math.random() * (max - min)) + min);
     }
 
-    private void haldaTakistusi() { //haldab takistuste loomist ja liikumist
+    private void haldaTakistusi() {
         long praeguneAeg = System.currentTimeMillis();
-        // Aeg mis takistuste vahel
         if (praeguneAeg - viimaneTakistuseAeg > takistuseInterval) {
-            //loob uue takistuse ja lisab takistuste listi
-            takistused.add(new Takistus(LAIUS, (int)(Math.random() * (KORGUS - 30)), 30, 30));
+            takistused.add(new Takistus(LAIUS, getRandomNumber(20, KORGUS - 60), 20, 20));
             viimaneTakistuseAeg = praeguneAeg;
-            takistuseInterval = getRandomNumber(500,takistuseIntervalMax); //Uuendab järgmise takistuse loomise ajavahemikku
-            takistuseIntervalMax -= 20;
+            takistuseInterval = getRandomNumber(500, takistuseIntervalMax);
+            takistuseIntervalMax = Math.max(500, takistuseIntervalMax - 20);
         }
+        takistused.forEach(Takistus::uuenda);
+        takistused.removeIf(t -> t.x < -30);
+    }
 
-        takistused.forEach(Takistus::uuenda); // uuendab takistuse positsiooni
-        takistused.removeIf(takistus -> takistus.x < -30);// eemaldab takistused, mis on ekraanilt väljas
+    private void haldaPilvi() {
+        long praeguneAeg = System.currentTimeMillis();
+        if (praeguneAeg - viimanePilveAeg > 1000) {
+            int y = getRandomNumber(10, KORGUS - 80);
+            int laius = getRandomNumber(60, 120);
+            int korgus = getRandomNumber(30, 60);
+            pilved.add(new Pilv(LAIUS, y, laius, korgus));
+            viimanePilveAeg = praeguneAeg;
+        }
+        pilved.forEach(Pilv::uuenda);
+        pilved.removeIf(Pilv::onVäljas);
     }
 
     private void kontrolliKokkuporgeid() {
         Rectangle mangijaPiirid = mangija.saadaPiirid();
         for (Takistus takistus : takistused) {
-            if (takistus.saadaPiirid().intersects(mangijaPiirid)) { //kui mängija ja takistuse piirid kattuvad
-                taimer.stop(); //peatab taimeri
+            if (takistus.saadaPiirid().intersects(mangijaPiirid)) {
+                plahvatusX = mangija.x + 20;
+                plahvatusY = mangija.y + 20;
+                plahvatusAktiveeritud = true;
+                taimer.stop();
                 aeg.stop();
-                JOptionPane.showMessageDialog(this, "Mäng läbi! Teie lõplik aeg oli " + aegLõpp);
-                System.exit(0); //väljub programmist
+                new Timer(600, evt -> System.exit(0)).start(); // Oota enne sulgemist
+                break;
             }
         }
     }
 
     @Override
-    public void paintComponent(Graphics g) { //sellega saame mängu graafilised komponendid joonistada
+    public void paintComponent(Graphics g) {
         super.paintComponent(g);
-        joonista(g); //mängu elemendid
+        joonista(g);
     }
 
     public void joonista(Graphics g) {
-        mangija.joonista(g); //joonistab mängija
-        for (Takistus takistus : takistused) { //käib takistused läbi
-            takistus.joonista(g); //joonistab takistused
+        g.setColor(new Color(135, 206, 235));
+        g.fillRect(0, 0, LAIUS, KORGUS);
+        pilved.forEach(p -> p.joonista(g));
+        mangija.joonista(g);
+        takistused.forEach(t -> t.joonista(g));
+
+        g.setColor(Color.GREEN);
+        g.fillRect(0, KORGUS - 20, LAIUS, 20);
+
+        if (plahvatusAktiveeritud) {
+            g.setColor(Color.ORANGE);
+            g.fillOval(plahvatusX - 30, plahvatusY - 30, 60, 60);
+            g.setColor(Color.RED);
+            g.fillOval(plahvatusX - 15, plahvatusY - 15, 30, 30);
         }
     }
 
     @Override
     public void keyPressed(KeyEvent e) {
-        mangija.klahviVajutus(e); //saame tänu sellele mängijat juhtida
+        mangija.klahviVajutus(e);
     }
 
     @Override
@@ -120,5 +146,5 @@ public class Mangupaneel extends JPanel implements ActionListener, KeyListener {
     }
 
     @Override
-    public void keyTyped(KeyEvent e) { }
+    public void keyTyped(KeyEvent e) {}
 }
