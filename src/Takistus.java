@@ -15,12 +15,14 @@ public class Takistus {
     }
 
     public void joonista(Graphics g) {
-        g.setColor(Color.RED);
-        g.fillRect(x, y, laius, korgus);
+        g.setColor(new Color(50, 50, 50, 100));
+        g.fillOval(x + laius, y + korgus / 2 - 5, 10, 10);
+
+        g.setColor(Color.BLACK);
+        g.fillOval(x, y, laius, korgus);
     }
 
     public Rectangle saadaPiirid() {
         return new Rectangle(x, y, laius, korgus);
     }
-
 }
