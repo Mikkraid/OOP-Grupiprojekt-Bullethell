@@ -6,14 +6,11 @@ public class Mangija {
     private final int KIIRUS = 5;
     private final int SUURUS = 50;
 
-    public void uuenda() { //Uuendab mängija asukohta
+    public void uuenda() {
         x += dx;
         y += dy;
-
-        //Lisab piirid, et mängija ei saaks ekraanist välja liikuda
         int minX = 0, maxX = 800 - SUURUS;
         int minY = 0, maxY = 300 - SUURUS;
-
         if (x < minX) x = minX;
         if (x > maxX) x = maxX;
         if (y < minY) y = minY;
@@ -29,27 +26,17 @@ public class Mangija {
         return new Rectangle(x, y, SUURUS, SUURUS);
     }
 
-    public void klahviVajutus(KeyEvent e) {  //Liikumine läbi maa
+    public void klahviVajutus(KeyEvent e) {
         switch (e.getKeyCode()) {
-            case KeyEvent.VK_LEFT:
-                dx = -KIIRUS - 1;
-                break;
-            case KeyEvent.VK_RIGHT:
-                dx = KIIRUS;
-                break;
-            case KeyEvent.VK_UP:
-                dy = -KIIRUS;
-                break;
-            case KeyEvent.VK_DOWN:
-                dy = KIIRUS;
+            case KeyEvent.VK_LEFT -> dx = -KIIRUS - 1;
+            case KeyEvent.VK_RIGHT -> dx = KIIRUS;
+            case KeyEvent.VK_UP -> dy = -KIIRUS;
+            case KeyEvent.VK_DOWN -> dy = KIIRUS;
         }
     }
 
     public void klahviVabastus(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.VK_UP || e.getKeyCode() == KeyEvent.VK_DOWN) {
-            dy = 0;
-        } else {
-            dx = 0;
-        }
+        if (e.getKeyCode() == KeyEvent.VK_UP || e.getKeyCode() == KeyEvent.VK_DOWN) dy = 0;
+        else dx = 0;
     }
 }
